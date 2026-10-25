@@ -1,0 +1,29 @@
+# Dependencies and build products
+node_modules/
+**/node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Persistent local data (never commit a live database)
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+**/data/*.sqlite*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

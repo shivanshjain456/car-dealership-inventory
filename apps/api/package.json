@@ -1,0 +1,27 @@
+{
+  "name": "@motorline/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-migrations.mjs",
+    "start": "node dist/server.js",
+    "test": "vitest run --config vitest.config.ts",
+    "coverage": "vitest run --coverage --config vitest.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "admin:create": "tsx scripts/bootstrap-admin.ts"
+  },
+  "dependencies": {
+    "@motorline/contracts": "1.0.0",
+    "better-sqlite3": "13.0.3",
+    "cookie-parser": "1.4.7",
+    "dotenv": "17.2.3",
+    "express": "5.3.0",
+    "express-rate-limit": "8.7.1",
+    "helmet": "8.3.0",
+    "jose": "6.2.13",
+    "zod": "4.6.7"
+  }
+}

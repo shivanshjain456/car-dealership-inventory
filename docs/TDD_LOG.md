@@ -1,0 +1,18 @@
+# Test-first and verification log
+
+Earlier development records describe these observed test-first cycles:
+
+- One-time Admin bootstrap: 3 focused failures against the pre-implementation path, then 3 passes after the CLI/bootstrap implementation.
+- Initial SPA auth/session and first-run behaviors: focused UI/API tests were run red before the corresponding implementation; the expanded suite later passed. A browser assertion that ignored an active Make filter was corrected as a test expectation, not a product fix.
+- Exact currency formatting: 3 focused failures against a placeholder, then 3 passes after exact formatting was implemented.
+- Revision-based stale-write protection: recorded red runs were contracts **1 failed / 27 passed**, API **8 failed / 34 passed**, and web **4 failed / 27 passed**; follow-up migration/purchase-staleness tests recorded API **10 failed / 34 passed** before implementation, and failed-refresh cases recorded web **2 failed / 31 passed**. The recorded green state was contracts 28/28, API 44/44, web 33/33, and Chromium 4/4.
+
+## Repository-audit bug fixes
+
+Each regression test was added and run before its corresponding implementation fix.
+
+| Defect found in review                                                                                                                                                   | Red evidence                                                                                                                     | Fix and focused green evidence                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The purchase route treated an empty JSON array/object as “no body”; unparsed non-JSON payloads could also reach the stock decrement.                                     | API integration file: **1 failed, 16 passed**. A request with a JSON array expected `400 UNEXPECTED_BODY` but received `200 OK`. | A route-level raw-body guard now rejects any nonempty request payload while allowing a genuinely bodyless request. API integration file: **17/17 passed**, including unchanged-stock assertions.       |
+| The hard-delete confirmation claimed `aria-modal` without moving focus into the dialog, trapping keyboard focus, or restoring focus on dismissal.                        | SPA test file: **1 failed, 22 passed**. Focus stayed on the background Delete button instead of moving to “Keep vehicle.”        | The dialog now receives initial focus, traps Tab/Shift+Tab, closes with Escape when not busy, and restores focus (or moves to the collection heading after deletion). SPA test file: **23/23 passed**. |
+| A single `actionBusyId` was overwritten when requests for different vehicles overlapped, re-enabling the earlier vehicle’s purchase button before its request completed. | SPA test file: **1 failed, 23 passed**. After starting a second pending purchase, the first purchase button was enabled again.   | Per-vehicle action tracking plus a synchronous guard keeps each affected vehicle’s actions disabled until its request settles. Final focused run: SPA **24/24**, VehicleCard **4/4**.                  |
