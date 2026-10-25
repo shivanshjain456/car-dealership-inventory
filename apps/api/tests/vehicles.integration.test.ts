@@ -144,6 +144,42 @@ describe('vehicle inventory API', () => {
     });
   });
 
+  it('accepts the weak spelling of the exact revision returned through an intermediary', async () => {
+    const adminCookie = await bootstrapAdminAndLogin(system!);
+    const created = await createVehicleAsAdmin(adminCookie);
+
+    const malformedWeakTag = await request(system!.app)
+      .put(`/api/vehicles/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .set('If-Match', 'W/"version"')
+      .send({ ...vehicle, model: 'RAV4 Hybrid' })
+      .expect(400);
+    expect(malformedWeakTag.body.error.code).toBe('INVALID_IF_MATCH');
+
+    const staleWeakTag = await request(system!.app)
+      .put(`/api/vehicles/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .set('If-Match', 'W/"99"')
+      .send({ ...vehicle, model: 'RAV4 Hybrid' })
+      .expect(412);
+    expect(staleWeakTag.body.error.code).toBe('STALE_WRITE');
+
+    const updated = await request(system!.app)
+      .put(`/api/vehicles/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .set('If-Match', 'W/"1"')
+      .send({ ...vehicle, model: 'RAV4 Hybrid' })
+      .expect(200);
+    expect(updated.body.version).toBe(2);
+    expect(updated.headers.etag).toBe('"2"');
+
+    await request(system!.app)
+      .delete(`/api/vehicles/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .set('If-Match', 'W/"2"')
+      .expect(204);
+  });
+
   it('rejects stale Admin updates and deletes without overwriting newer inventory', async () => {
     const adminCookie = await bootstrapAdminAndLogin(system!);
     const created = await createVehicleAsAdmin(adminCookie);
