@@ -40,7 +40,7 @@ function expectedVehicleVersion(request: Request): number {
   return version;
 }
 
-function setVehicleEtag(response: Response, version: number): void {
+function setVehicleRevisionHeaders(response: Response, version: number): void {
   // Intermediaries must not transform this representation and weaken its strong validator.
   response.setHeader('Cache-Control', 'no-transform');
   response.setHeader('ETag', `"${version}"`);
@@ -76,7 +76,7 @@ export function createVehicleRouter(
   router.post('/', requireAdmin, validateBody(vehicleInputSchema), (request, response, next) => {
     try {
       const vehicle = repository.create(request.body as VehicleInput);
-      setVehicleEtag(response, vehicle.version);
+      setVehicleRevisionHeaders(response, vehicle.version);
       response.status(201).json(vehicle);
     } catch (error) {
       next(error);
@@ -91,7 +91,7 @@ export function createVehicleRouter(
         request.body as VehicleInput,
         expectedVersion
       );
-      setVehicleEtag(response, vehicle.version);
+      setVehicleRevisionHeaders(response, vehicle.version);
       response.status(200).json(vehicle);
     } catch (error) {
       next(error);
