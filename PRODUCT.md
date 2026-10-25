@@ -1,6 +1,6 @@
 # Product brief
 
-Motorline Inventory is a standalone dealership-inventory application. Staff enter and manage their own vehicle records in a persistent local SQLite database; a fresh installation starts empty.
+Motorline Inventory is a standalone dealership-inventory application. Staff enter and manage their own vehicle records in a persistent local SQLite database; a fresh installation starts empty. The public Render link is a separate free evaluation deployment whose disposable database is reseeded with a demo Admin and five synthetic vehicles at process start.
 
 ## People and jobs
 
@@ -14,7 +14,7 @@ Motorline Inventory is a standalone dealership-inventory application. Staff ente
 - Prices carry an ISO currency code; price-range search never mixes currencies.
 - Purchases atomically decrement stock by one. There is no payment, order, purchase-history, FX, or customer account-management feature.
 - Public registration creates customers only. The first Admin is provisioned through a local one-time CLI.
-- A new database is empty. There is no production demo seed or synthetic-data fallback; synthetic records stay in test fixtures.
+- A new local database is empty. Normal startup has no demo seed or synthetic-data fallback; synthetic records stay in test fixtures. Only the explicit hosted-demo start command reuses those fixtures, and its accounts and inventory changes disappear when the free service restarts or spins down.
 
 ## Experience mode
 
