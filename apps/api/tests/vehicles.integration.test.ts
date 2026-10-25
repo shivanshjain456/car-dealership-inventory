@@ -42,6 +42,7 @@ describe('vehicle inventory API', () => {
       version: 1
     });
     expect(created.headers.etag).toBe('"1"');
+    expect(created.headers['cache-control']).toContain('no-transform');
     expect(created.body.createdAt).toEqual(expect.any(String));
     expect(created.body.updatedAt).toEqual(expect.any(String));
     expect(
@@ -103,6 +104,7 @@ describe('vehicle inventory API', () => {
     expect(updated.body).toMatchObject({ ...replacement, version: 2 });
     expect(updated.body.id).toBe(created.body.id);
     expect(updated.headers.etag).toBe('"2"');
+    expect(updated.headers['cache-control']).toContain('no-transform');
 
     await request(system!.app)
       .put('/api/vehicles/00000000-0000-4000-8000-000000000001')
