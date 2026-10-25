@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeVehicleSearchText,
-  vehicleSearchPattern
-} from '../src/vehicles/search-text.js';
+import { normalizeVehicleSearchText, vehicleSearchPattern } from '../src/vehicles/search-text.js';
 
 describe('vehicle search text normalization', () => {
   it('folds Unicode case and compatibility characters', () => {

@@ -19,7 +19,10 @@ describe('static single-page application hosting', () => {
     temporaryDirectories = [databaseDirectory, webDirectory];
 
     fs.mkdirSync(path.join(webDirectory, 'assets'));
-    fs.writeFileSync(path.join(webDirectory, 'index.html'), '<!doctype html><title>Motorline test</title>');
+    fs.writeFileSync(
+      path.join(webDirectory, 'index.html'),
+      '<!doctype html><title>Motorline test</title>'
+    );
     fs.writeFileSync(path.join(webDirectory, 'assets', 'app-abc123.js'), 'console.log("ok");');
     fs.writeFileSync(path.join(webDirectory, 'assets', 'app-abc123.css'), 'body {}');
     fs.writeFileSync(path.join(webDirectory, 'robots.txt'), 'User-agent: *\nAllow: /\n');

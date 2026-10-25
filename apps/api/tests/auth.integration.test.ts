@@ -115,10 +115,7 @@ describe('authentication API', () => {
     const secondCookie = secondLogin.headers['set-cookie']?.[0].split(';')[0] ?? '';
 
     await request(system!.app).get('/api/auth/me').set('Cookie', firstCookie).expect(200);
-    await request(system!.app)
-      .post('/api/auth/logout')
-      .set('Cookie', firstCookie)
-      .expect(204);
+    await request(system!.app).post('/api/auth/logout').set('Cookie', firstCookie).expect(204);
 
     const revoked = await request(system!.app)
       .get('/api/auth/me')
