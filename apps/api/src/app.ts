@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import cookieParser from 'cookie-parser';
-import express, { type Express } from 'express';
+import express, { type Express, type Response } from 'express';
 import helmet from 'helmet';
 import type Database from 'better-sqlite3';
 import { createAuthService } from './auth/service.js';
@@ -11,6 +11,18 @@ import { errorHandler } from './middleware/error-handler.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { migrateDatabase } from './db/database.js';
 import { createVehicleRouter } from './vehicles/routes.js';
+
+const HASHED_STATIC_ASSET = /-[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/;
+
+function setStaticCacheHeaders(response: Response, filePath: string): void {
+  const filename = basename(filePath);
+  if (filename === 'index.html') {
+    response.setHeader('Cache-Control', 'no-cache');
+  } else if (HASHED_STATIC_ASSET.test(filename)) {
+    // Vite asset names contain a content hash, so their bytes can be cached forever.
+    response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}
 
 export interface AppDependencies {
   database: Database.Database;
@@ -57,16 +69,31 @@ export function createApp(dependencies: AppDependencies): Express {
 
   const webDirectory = dependencies.webDirectory ? resolve(dependencies.webDirectory) : undefined;
   if (webDirectory && existsSync(webDirectory)) {
-    app.use(express.static(webDirectory, { index: false, fallthrough: true }));
+    app.get('/favicon.ico', (_request, response, next) => {
+      if (existsSync(join(webDirectory, 'favicon.ico'))) {
+        next();
+        return;
+      }
+      // Browsers request this legacy URL even when the SVG application icon is declared.
+      response.status(204).end();
+    });
+    app.use(
+      express.static(webDirectory, {
+        index: false,
+        fallthrough: true,
+        setHeaders: setStaticCacheHeaders
+      })
+    );
     app.use((request, response, next) => {
       if (
-        request.method !== 'GET' ||
+        !['GET', 'HEAD'].includes(request.method) ||
         request.path.startsWith('/api') ||
         /\.[^/]+$/.test(request.path)
       ) {
         next(new HttpError(404, 'NOT_FOUND', 'Resource was not found.'));
         return;
       }
+      response.setHeader('Cache-Control', 'no-cache');
       response.sendFile(join(webDirectory, 'index.html'), (error) => {
         if (error) next(error);
       });
