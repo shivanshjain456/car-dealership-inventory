@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import {
   userDtoSchema,
   type LoginInput,
@@ -33,6 +33,7 @@ export interface AuthService {
   login(input: LoginInput): Promise<AuthResult>;
   createInitialAdmin(input: RegisterInput): Promise<UserDto>;
   getSessionUser(token: string): Promise<UserDto>;
+  revokeSession(token: string): Promise<void>;
 }
 
 function isUniqueConstraint(error: unknown): boolean {
@@ -77,9 +78,31 @@ export function createAuthService(database: Database.Database, jwtSecret: string
       .setIssuer(TOKEN_ISSUER)
       .setAudience(TOKEN_AUDIENCE)
       .setSubject(user.id)
+      .setJti(randomUUID())
       .setIssuedAt()
       .setExpirationTime('1h')
       .sign(signingKey);
+  }
+
+  async function verifySessionToken(token: string): Promise<JWTPayload> {
+    try {
+      const verified = await jwtVerify(token, signingKey, {
+        algorithms: ['HS256'],
+        issuer: TOKEN_ISSUER,
+        audience: TOKEN_AUDIENCE
+      });
+      return verified.payload;
+    } catch {
+      throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication is required.');
+    }
+  }
+
+  function isSessionRevoked(tokenId: string): boolean {
+    return Boolean(
+      database
+        .prepare('SELECT 1 AS revoked FROM revoked_session_tokens WHERE token_id = ?')
+        .get(tokenId)
+    );
   }
 
   async function createSession(
@@ -158,22 +181,36 @@ export function createAuthService(database: Database.Database, jwtSecret: string
     },
 
     async getSessionUser(token) {
-      let subject: string | undefined;
-      try {
-        const verified = await jwtVerify(token, signingKey, {
-          algorithms: ['HS256'],
-          issuer: TOKEN_ISSUER,
-          audience: TOKEN_AUDIENCE
-        });
-        subject = verified.payload.sub;
-      } catch {
+      const payload = await verifySessionToken(token);
+      if (!payload.sub || !payload.jti || isSessionRevoked(payload.jti)) {
         throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication is required.');
       }
-
-      if (!subject) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication is required.');
-      const row = findById(subject);
+      const row = findById(payload.sub);
       if (!row) throw new HttpError(401, 'UNAUTHENTICATED', 'Authentication is required.');
       return toUserDto(row);
+    },
+
+    async revokeSession(token) {
+      let payload: JWTPayload;
+      try {
+        payload = await verifySessionToken(token);
+      } catch {
+        // Logout stays idempotent: invalid or expired tokens cannot be replayed anyway.
+        return;
+      }
+      if (!payload.jti || !payload.exp) return;
+
+      const revokedAt = new Date().toISOString();
+      const expiresAt = new Date(payload.exp * 1_000).toISOString();
+      const recordRevocation = database.transaction(() => {
+        database.prepare('DELETE FROM revoked_session_tokens WHERE expires_at <= ?').run(revokedAt);
+        database
+          .prepare(
+            'INSERT OR IGNORE INTO revoked_session_tokens (token_id, expires_at, revoked_at) VALUES (?, ?, ?)'
+          )
+          .run(payload.jti, expiresAt, revokedAt);
+      });
+      recordRevocation.immediate();
     }
   };
 }

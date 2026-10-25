@@ -1,4 +1,4 @@
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
 import type { UserDto } from '@motorline/contracts';
 import type { AuthService } from '../auth/service.js';
 import { HttpError } from '../errors.js';
@@ -11,10 +11,13 @@ function bearerToken(authorization: string | undefined): string | undefined {
   return match?.[1];
 }
 
+export function getSessionToken(request: Request): string | undefined {
+  return request.cookies?.[SESSION_COOKIE_NAME] || bearerToken(request.get('authorization'));
+}
+
 export function createAuthenticate(authService: AuthService): RequestHandler {
   return async (request, response, next) => {
-    const token =
-      request.cookies?.[SESSION_COOKIE_NAME] || bearerToken(request.get('authorization'));
+    const token = getSessionToken(request);
     if (!token) {
       next(new HttpError(401, 'UNAUTHENTICATED', 'Authentication is required.'));
       return;

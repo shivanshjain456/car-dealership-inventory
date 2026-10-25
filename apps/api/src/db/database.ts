@@ -11,6 +11,10 @@ const MIGRATIONS = [
   {
     version: 2,
     path: new URL('./migrations/002_vehicle_revision.sql', import.meta.url)
+  },
+  {
+    version: 3,
+    path: new URL('./migrations/003_revoked_session_tokens.sql', import.meta.url)
   }
 ] as const;
 

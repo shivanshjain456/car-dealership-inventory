@@ -10,6 +10,7 @@ import type { AuthService } from './service.js';
 import {
   createAuthenticate,
   getAuthenticatedUser,
+  getSessionToken,
   SESSION_COOKIE_NAME
 } from '../middleware/authenticate.js';
 import { validateBody } from '../middleware/validate.js';
@@ -80,14 +81,20 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
     }
   );
 
-  router.post('/logout', (_request, response) => {
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: options.secureCookies,
-      sameSite: 'strict',
-      path: '/api'
-    });
-    response.status(204).end();
+  router.post('/logout', async (request, response, next) => {
+    try {
+      const token = getSessionToken(request);
+      if (token) await options.authService.revokeSession(token);
+      response.clearCookie(SESSION_COOKIE_NAME, {
+        httpOnly: true,
+        secure: options.secureCookies,
+        sameSite: 'strict',
+        path: '/api'
+      });
+      response.status(204).end();
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get('/me', authenticate, (_request, response) => {
