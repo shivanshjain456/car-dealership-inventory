@@ -335,6 +335,32 @@ describe('vehicle inventory API', () => {
     expect(querySearch.body.items[0]).toMatchObject({ model: 'Civic' });
   });
 
+  it('searches Unicode text case-insensitively across make, model, and category', async () => {
+    const adminCookie = await bootstrapAdminAndLogin(system!);
+    const customerCookie = await registerCustomer(system!);
+    const created = await createVehicleAsAdmin(adminCookie, {
+      ...vehicle,
+      make: 'ŠkodaQA',
+      model: 'Ünicode',
+      category: 'Électrique'
+    });
+
+    for (const query of [
+      { make: 'ško' },
+      { model: 'ünic' },
+      { category: 'élect' },
+      { q: 'ŠKODA' }
+    ]) {
+      const response = await request(system!.app)
+        .get('/api/vehicles/search')
+        .query(query)
+        .set('Cookie', customerCookie)
+        .expect(200);
+      expect(response.body.total).toBe(1);
+      expect(response.body.items[0].id).toBe(created.body.id);
+    }
+  });
+
   it('requires a currency for price ranges and never compares across currencies', async () => {
     const adminCookie = await bootstrapAdminAndLogin(system!);
     const customerCookie = await registerCustomer(system!);
