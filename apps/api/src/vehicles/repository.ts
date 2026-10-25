@@ -11,6 +11,11 @@ import {
   type VehiclePage
 } from '@motorline/contracts';
 import { HttpError } from '../errors.js';
+import {
+  registerVehicleSearchFunctions,
+  UNICODE_LOWER_FUNCTION,
+  vehicleSearchPattern
+} from './search-text.js';
 
 const MAX_SAFE_QUANTITY = Number.MAX_SAFE_INTEGER;
 const MAX_SAFE_VERSION = Number.MAX_SAFE_INTEGER;
@@ -55,26 +60,8 @@ function toDto(row: VehicleRow): VehicleDto {
   });
 }
 
-const UNICODE_LOWER_FUNCTION = 'motorline_unicode_lower';
-
-function escapeLike(value: string): string {
-  return value.replace(/[!%_]/g, '!$&');
-}
-
-// SQLite's built-in LIKE/NOCASE only folds ASCII. Normalize both sides with
-// JavaScript's Unicode-aware compatibility normalization and lowercasing.
-function normalizeSearchText(value: string): string {
-  return value.normalize('NFKC').toLowerCase();
-}
-
-function searchPattern(value: string): string {
-  return `%${escapeLike(normalizeSearchText(value))}%`;
-}
-
 export function createVehicleRepository(database: Database.Database): VehicleRepository {
-  database.function(UNICODE_LOWER_FUNCTION, { deterministic: true }, (value: unknown) =>
-    typeof value === 'string' ? normalizeSearchText(value) : value
-  );
+  registerVehicleSearchFunctions(database);
   function findById(id: string): VehicleRow | undefined {
     return database.prepare(`SELECT ${SELECT_COLUMNS} FROM vehicles WHERE id = ?`).get(id) as
       VehicleRow | undefined;
@@ -95,14 +82,14 @@ export function createVehicleRepository(database: Database.Database): VehicleRep
     const parameters: Array<string | number> = [];
     const partial = (column: 'make' | 'model' | 'category', value: string) => {
       filters.push(`${UNICODE_LOWER_FUNCTION}(${column}) LIKE ? ESCAPE '!'`);
-      parameters.push(searchPattern(value));
+      parameters.push(vehicleSearchPattern(value));
     };
 
     if (query.q) {
       filters.push(
         `(${UNICODE_LOWER_FUNCTION}(make) LIKE ? ESCAPE '!' OR ${UNICODE_LOWER_FUNCTION}(model) LIKE ? ESCAPE '!' OR ${UNICODE_LOWER_FUNCTION}(category) LIKE ? ESCAPE '!')`
       );
-      const pattern = searchPattern(query.q);
+      const pattern = vehicleSearchPattern(query.q);
       parameters.push(pattern, pattern, pattern);
     }
     if (query.make) partial('make', query.make);
