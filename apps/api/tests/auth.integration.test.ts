@@ -127,6 +127,32 @@ describe('authentication API', () => {
     await request(system!.app).post('/api/auth/logout').expect(204);
   });
 
+  it('accepts bearer sessions and keeps logout idempotent for malformed tokens', async () => {
+    const registration = await request(system!.app)
+      .post('/api/auth/register')
+      .send({ email: 'bearer@example.com', password: PASSWORD })
+      .expect(201);
+    const cookie = registration.headers['set-cookie']?.[0].split(';')[0] ?? '';
+    const token = cookie.slice(cookie.indexOf('=') + 1);
+
+    await request(system!.app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    await request(system!.app)
+      .post('/api/auth/logout')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(204);
+    await request(system!.app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    await request(system!.app)
+      .post('/api/auth/logout')
+      .set('Cookie', 'motorline_session=not-a-jwt')
+      .expect(204);
+  });
+
   it('requires authentication for current-user and inventory endpoints', async () => {
     await request(system!.app).get('/api/auth/me').expect(401);
     await request(system!.app).get('/api/vehicles').expect(401);

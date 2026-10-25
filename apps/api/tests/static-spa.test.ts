@@ -65,12 +65,22 @@ describe('static single-page application hosting', () => {
     const shell = await request(app).get('/').expect(200);
     expect(shell.headers['cache-control']).toContain('no-cache');
 
+    const directShell = await request(app).get('/index.html').expect(200);
+    expect(directShell.headers['cache-control']).toContain('no-cache');
+
     for (const assetPath of ['/assets/app-abc123.js', '/assets/app-abc123.css']) {
       const asset = await request(app).get(assetPath).expect(200);
       expect(asset.headers['cache-control']).toContain('public');
       expect(asset.headers['cache-control']).toContain('max-age=31536000');
       expect(asset.headers['cache-control']).toContain('immutable');
     }
+  });
+
+  it('does not use the SPA fallback for write methods or unknown files', async () => {
+    const app = createStaticApplication();
+
+    await request(app).post('/inventory').expect(404);
+    await request(app).get('/assets/missing-abc123.js').expect(404);
   });
 
   it('serves crawler metadata and treats a missing ICO favicon as an empty success', async () => {
