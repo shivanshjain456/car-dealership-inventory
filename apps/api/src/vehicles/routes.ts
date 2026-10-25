@@ -28,20 +28,23 @@ function expectedVehicleVersion(request: Request): number {
     );
   }
 
-  const match = /^"([1-9]\d*)"$/.exec(header.trim());
+  // Some deployed intermediaries rewrite the origin's strong ETag to its weak
+  // spelling. The opaque value is still one exact integer revision, so either
+  // spelling preserves the same stale-write check; lists and wildcards do not.
+  const match = /^(?:W\/)?"([1-9]\d*)"$/.exec(header.trim());
   const version = match ? Number(match[1]) : Number.NaN;
   if (!Number.isSafeInteger(version)) {
     throw new HttpError(
       400,
       'INVALID_IF_MATCH',
-      'If-Match must contain one quoted, positive integer vehicle version, such as "1".'
+      'If-Match must contain one quoted, positive integer vehicle version, such as "1" or W/"1".'
     );
   }
   return version;
 }
 
 function setVehicleRevisionHeaders(response: Response, version: number): void {
-  // Intermediaries must not transform this representation and weaken its strong validator.
+  // Ask intermediaries not to transform the representation carrying this validator.
   response.setHeader('Cache-Control', 'no-transform');
   response.setHeader('ETag', `"${version}"`);
 }
