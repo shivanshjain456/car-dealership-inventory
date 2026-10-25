@@ -101,6 +101,35 @@ describe('authentication API', () => {
     expect(logout.headers['set-cookie']?.[0]).toMatch(/Expires=Thu, 01 Jan 1970/i);
   });
 
+  it('revokes only the copied session token presented at logout', async () => {
+    const registration = await request(system!.app)
+      .post('/api/auth/register')
+      .send({ email: 'sessions@example.com', password: PASSWORD })
+      .expect(201);
+    const firstCookie = registration.headers['set-cookie']?.[0].split(';')[0] ?? '';
+
+    const secondLogin = await request(system!.app)
+      .post('/api/auth/login')
+      .send({ email: 'sessions@example.com', password: PASSWORD })
+      .expect(200);
+    const secondCookie = secondLogin.headers['set-cookie']?.[0].split(';')[0] ?? '';
+
+    await request(system!.app).get('/api/auth/me').set('Cookie', firstCookie).expect(200);
+    await request(system!.app)
+      .post('/api/auth/logout')
+      .set('Cookie', firstCookie)
+      .expect(204);
+
+    const revoked = await request(system!.app)
+      .get('/api/auth/me')
+      .set('Cookie', firstCookie)
+      .expect(401);
+    expect(revoked.body.error.code).toBe('UNAUTHENTICATED');
+
+    await request(system!.app).get('/api/auth/me').set('Cookie', secondCookie).expect(200);
+    await request(system!.app).post('/api/auth/logout').expect(204);
+  });
+
   it('requires authentication for current-user and inventory endpoints', async () => {
     await request(system!.app).get('/api/auth/me').expect(401);
     await request(system!.app).get('/api/vehicles').expect(401);

@@ -36,9 +36,11 @@ describe('file-backed SQLite database', () => {
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
       .all()
       .map((row) => (row as { name: string }).name);
-    expect(tables).toEqual(expect.arrayContaining(['schema_migrations', 'users', 'vehicles']));
+    expect(tables).toEqual(
+      expect.arrayContaining(['schema_migrations', 'users', 'vehicles', 'revoked_session_tokens'])
+    );
     expect(database.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get()).toEqual({
-      count: 2
+      count: 3
     });
     expect(database.pragma('table_info(vehicles)')).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'version', dflt_value: '1' })])
@@ -77,7 +79,7 @@ describe('file-backed SQLite database', () => {
     ).toEqual({ make: 'Toyota', quantity: 3, version: 1 });
     expect(
       database.prepare('SELECT version FROM schema_migrations ORDER BY version').all()
-    ).toEqual([{ version: 1 }, { version: 2 }]);
+    ).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
   });
 
   it('enforces role, currency-code format, non-negative price, and stock constraints in SQLite', () => {
