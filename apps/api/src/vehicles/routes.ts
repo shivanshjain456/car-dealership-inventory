@@ -41,6 +41,8 @@ function expectedVehicleVersion(request: Request): number {
 }
 
 function setVehicleEtag(response: Response, version: number): void {
+  // Intermediaries must not transform this representation and weaken its strong validator.
+  response.setHeader('Cache-Control', 'no-transform');
   response.setHeader('ETag', `"${version}"`);
 }
 
